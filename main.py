@@ -1,6 +1,3 @@
-# Install UV: https://docs.astral.sh/uv/getting-started/installation/
-# Then run with `uv run <this file>`
-
 # /// script
 # requires-python = "<3.13"
 # dependencies = [
