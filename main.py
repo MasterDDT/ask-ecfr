@@ -215,12 +215,14 @@ class AgencyStat:
 class EcfrAPI:
     def __init__(self):
         self.base_url = "https://www.ecfr.gov/api"
+
     def get_agencies(self) -> Iterator[Agency]:
         # curl -X GET "https://www.ecfr.gov/api/admin/v1/agencies.json"
         url = f"{self.base_url}/admin/v1/agencies.json"
         response = requests.get(url).json()
         for ag in response['agencies']:
             yield Agency(ag)
+
     def get_stats(self, agency_sort_name: str) -> AgencyStat:
         result_queue = queue.Queue()
         task_queue = queue.Queue()
