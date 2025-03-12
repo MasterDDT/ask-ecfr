@@ -250,12 +250,12 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Ask ECFR")
         self.setGeometry(100, 100, 800, 600)
 
-        # Main widget and layout
+        # main widget
         self.main_widget = QWidget(self)
         self.setCentralWidget(self.main_widget)
         self.layout = QVBoxLayout(self.main_widget)
 
-        # Dropdown
+        # agency dropdown
         self.label = QLabel("Pick one", self)
         self.layout.addWidget(self.label)
         self.dropdown = QComboBox(self)
@@ -263,35 +263,36 @@ class MainWindow(QMainWindow):
         self.dropdown.currentTextChanged.connect(self.on_dropdown_change)
         self.layout.addWidget(self.dropdown)
 
-        # reasonable pie
-        self.reasonable_figure = plt.Figure()
-        self.reasonable_canvas = FigureCanvas(self.reasonable_figure)
-        self.layout.addWidget(self.reasonable_canvas)
+        # complexity pie
+        self.complexity_figure = plt.Figure()
+        self.complexity_canvas = FigureCanvas(self.complexity_figure)
+        self.layout.addWidget(self.complexity_canvas)
 
         # spending pie
         self.spending_figure = plt.Figure()
         self.spending_canvas = FigureCanvas(self.spending_figure)
         self.layout.addWidget(self.spending_canvas)
 
-        # Word count label
+        # word count label
         self.word_label = QLabel("", self)
         self.layout.addWidget(self.word_label)
 
     def on_dropdown_change(self, agency_sort_name: str):
-        # Show loading dialog
+        # show loading dialog
         loading = QProgressDialog("Loading...", None, 0, 0, self)
         loading.setWindowModality(Qt.WindowModal)
-        loading.setCancelButton(None)  # No cancel button
+        loading.setCancelButton(None)   # No cancel button
         loading.show()
-        QApplication.processEvents()  # Ensure dialog appears immediately
+        QApplication.processEvents()    # Ensure dialog appears immediately
 
         stats = self.api.get_stats(agency_sort_name)
 
-        # Hide loading dialog and update chart
+        # hide loading dialog and update chart
         loading.close()
         self.update_chart(stats)
 
     def update_chart(self, stats: AgencyStat):
+        # get complexity data
         complex_ratios = stats.complex_ratios()
         complex_data = {}
         if complex_ratios[0] > 0.0:
@@ -301,6 +302,7 @@ class MainWindow(QMainWindow):
         if complex_ratios[2] > 0.0:
             complex_data['unknown'] = complex_ratios[2]
 
+        # get spending data
         spending_ratios = stats.spending_ratios()
         spending_data = {}
         if spending_ratios[0] > 0.0:
@@ -311,16 +313,16 @@ class MainWindow(QMainWindow):
             spending_data['unknown'] = spending_ratios[2]
 
         # clear figures
-        self.reasonable_figure.clear()
+        self.complexity_figure.clear()
         self.spending_figure.clear()
 
-        # reasonable pie
-        reasonble_ax = self.reasonable_figure.add_subplot(111)
+        # complexity pie
+        complexity_ax = self.complexity_figure.add_subplot(111)
         values = list(complex_data.values())
         labels = list(complex_data.keys())
-        reasonble_ax.pie(values, labels=labels, autopct='%1.1f%%')
-        reasonble_ax.axis('equal')  # Equal aspect ratio ensures pie is circular
-        reasonble_ax.set_title("Percentage of Complex Regulations")
+        complexity_ax.pie(values, labels=labels, autopct='%1.1f%%')
+        complexity_ax.axis('equal')  # Equal aspect ratio ensures pie is circular
+        complexity_ax.set_title("Percentage of Complex Regulations")
 
         # spending pie
         spending_ax = self.spending_figure.add_subplot(111)
@@ -330,14 +332,14 @@ class MainWindow(QMainWindow):
         spending_ax.axis('equal')  # Equal aspect ratio ensures pie is circular
         spending_ax.set_title("Percentage of Regulations Involving Spending")
 
-        # Update word count label
+        # update word count label
         self.word_label.setText(f"""
             Total regulations: {len(stats.reg_stats)}
             Total word count: {stats.total_word_count()}
         """)
 
-        # Refresh canvases
-        self.reasonable_canvas.draw()
+        # refresh both pies
+        self.complexity_canvas.draw()
         self.spending_canvas.draw()
 
 if __name__ == '__main__':
