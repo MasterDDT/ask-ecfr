@@ -25,9 +25,9 @@ These metrics are computed using [ChatGPT o3-mini](https://openai.com/index/open
 
 ## Followups
 
-- Build a full-featured data pipeline to process each regulation content (and update when it changes). Ensures the content is only downloaded and parsed once. Compute all metrics and save into a database to fetch quickly later.
-- To avoid rate limit errors, implement a backoff strategy or get a privleged api key.
-- Add a service on top of the database so can be accessed easily from any API or application.
+- Did not support historical views (i.e how has this regulation changed over time)
+- Build a full-featured data pipeline to process each regulation content (and update when it changes). Ensures the content is only downloaded and parsed once. Compute all metrics and save into a database to fetch quickly later. Add a service on top of the database so it can be accessed easily by multiple applications.
+- To avoid rate limit errors, implement a backoff strategy or get a privileged api key.
 - Use a chunker and embedding library to allow doing RAG queries on the content for more ad-hoc analysis.
 - Some agencies have 10000+ regulations, how to fetch them without paging?
 - ???
