@@ -3,7 +3,7 @@
 ## Summary
 This tool computes metrics on agency regulations from the [Code of Federal Regulations](https://www.ecfr.gov) using its [Rest API](https://www.ecfr.gov/developers/documentation/api/v1).
 
-<img width="300" alt="Screenshot 2025-03-12 at 11 48 47 AM" src="https://github.com/user-attachments/assets/5537aaf8-772a-4779-b6c1-9cf42ab5e316" />
+<img width="795" alt="Screenshot 2025-03-12 at 11 48 47 AM" src="https://github.com/user-attachments/assets/9c249744-d05c-4316-9601-36487cf6ca7c" />
 
 ## Setup
 Install [uv python manager](https://docs.astral.sh/uv/getting-started/installation) for your operating system.
