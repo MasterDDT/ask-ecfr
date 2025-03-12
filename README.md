@@ -9,9 +9,9 @@ Install `uv` python manager for your operating system.
 https://docs.astral.sh/uv/getting-started/installation/
 
 ## Run
-You can optionally fetch additional LLM information for each regulation by defining `OPENAI_API_KEY` in your environment.
+If you want to fetch additional LLM information for each regulation, define `OPENAI_API_KEY` in your environment.
 
-Run with `uv`, whcih will on-demand fetch the required python version and dependencies defined at the top of the file.
+Run with `uv`, which will fetch the required python version and all dependencies defined at the top of the file.
 ```
 uv run main.py
 ```
