@@ -3,6 +3,8 @@
 ## Summary
 This tool fetches information from the [Code of Federal Regulations](https://www.ecfr.gov) using its [Rest API](https://www.ecfr.gov/developers/documentation/api/v1).
 
+<img width="600" alt="Screenshot 2025-03-12 at 11 48 47 AM" src="https://github.com/user-attachments/assets/5537aaf8-772a-4779-b6c1-9cf42ab5e316" />
+
 ## Setup
 Install [uv python manager](https://docs.astral.sh/uv/getting-started/installation) for your operating system.
 
