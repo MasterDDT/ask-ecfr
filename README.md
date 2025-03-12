@@ -1,4 +1,4 @@
-Ask ECFR
+# Ask ECFR
 
 ## Summary
 This tool fetches information from https://www.ecfr.gov using the API at https://www.ecfr.gov/developers/documentation/api/v1.
