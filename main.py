@@ -25,12 +25,10 @@ import os
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QComboBox, QProgressDialog, QLabel
 from PyQt5.QtCore import Qt
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy
 
-
-MAX_THREADS = 2
-MAX_REGULATIONS_T0_FETCH = 20
 
 # {'title': 22, 'chapter': 'V'}
 class CfrReference:
@@ -223,14 +221,17 @@ class EcfrAPI:
         response = requests.get(url).json()
         for ag in response['agencies']:
             yield Agency(ag)
-    # TODO: remove this regs parameter and bump max workers
     def get_stats(self, agency_sort_name: str) -> AgencyStat:
-        ag = [a for a in self.get_agencies() if a.sortable_name == agency_sort_name][0]
         result_queue = queue.Queue()
         task_queue = queue.Queue()
+        max_threads = os.environ.get("MAX_THREADS", 4)
+        max_regs_to_fetch = os.environ.get("MAX_REGULATIONS_T0_FETCH", 100)
+
+        ag = [a for a in self.get_agencies() if a.sortable_name == agency_sort_name][0]
         all_regs = list(ag.get_regs())
-        print(f"Total regs for {ag.display_name}: {len(all_regs)}, limiting to {MAX_REGULATIONS_T0_FETCH}")
-        for reg in all_regs[:MAX_REGULATIONS_T0_FETCH]:
+        print(f"Found {len(all_regs)} regulations for {ag.display_name}, limiting to {max_regs_to_fetch} and processing with {max_threads} threads")
+
+        for reg in all_regs[:max_regs_to_fetch]:
             task_queue.put(reg)
         def worker():
             while not task_queue.empty():
@@ -239,7 +240,7 @@ class EcfrAPI:
                 print(f"{reg.display_name()} has complex={reg_stat.complexity_score} spending={reg_stat.spending_score} total_words={reg_stat.total_words}")
                 result_queue.put(reg_stat)
         threads = []
-        for _ in range(MAX_THREADS):
+        for _ in range(max_threads):
             thread = Thread(target=worker)
             thread.start()
             threads.append(thread)
@@ -348,6 +349,7 @@ class MainWindow(QMainWindow):
         # clear figures
         self.complexity_figure.clear()
         self.spending_figure.clear()
+        self.wordhist_figure.clear()
 
         # complexity pie
         complexity_ax = self.complexity_figure.add_subplot(111)
@@ -371,6 +373,7 @@ class MainWindow(QMainWindow):
         wordhist_ax = self.wordhist_figure.add_subplot(111)
         wordhist_ax.hist(word_counts, bins=word_bins, edgecolor='black')
         bin_midpoints = (word_bins[:-1] + word_bins[1:]) / 2
+        wordhist_ax.yaxis.set_major_locator(MaxNLocator(integer=True))
         wordhist_ax.set_xticks(bin_midpoints)
         wordhist_ax.set_xticklabels(word_bin_labels, rotation=45, ha='right')
         wordhist_ax.tick_params(axis='x', length=0)
@@ -380,10 +383,7 @@ class MainWindow(QMainWindow):
         self.wordhist_figure.tight_layout(pad=1.0)
 
         # word count label
-        self.word_label.setText(f"""
-            Total regulations: {len(stats.reg_stats)}
-            Total word count: {stats.total_word_count()}
-        """)
+        self.word_label.setText(f"Total regulations: {len(stats.reg_stats)}\nTotal word count: {stats.total_word_count()}")
 
         # refresh
         self.complexity_canvas.draw()
