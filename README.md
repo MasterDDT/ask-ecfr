@@ -15,3 +15,11 @@ Run with `uv`, whcih will on-demand fetch the required python version and depend
 ```
 uv run main.py
 ```
+
+## Information
+
+These metrics are fetched using ChatGPT o3-mini.
+
+`complexity`: True if a regulation is complex. If an average adult could not understand the language, its considered complex.
+
+`spending`: True if a regulation involves spending. This could be anything related to budget, headcount, or setting aside funds.
