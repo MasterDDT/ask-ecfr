@@ -1,14 +1,14 @@
 # /// script
-# requires-python = ">3.11,<3.13"
+# requires-python = "~=3.12.0"
 # dependencies = [
-#   "requests==2.32.3",
-#   "beautifulsoup4==4.13.3",
-#   "lxml==5.3.1",
-#   "langchain==0.3.20",
-#   "langchain-openai==0.3.8",
-#   "matplotlib==3.10.1",
-#   "pyqt5==5.15.11",
-#   "numpy==2.2.3",
+#   "requests~=2.32.0",
+#   "beautifulsoup4~=4.13.0",
+#   "lxml~=5.3.0",
+#   "langchain~=0.3.0",
+#   "langchain-openai~=0.3.0",
+#   "matplotlib~=3.10.0",
+#   "pyqt5~=5.15.0",
+#   "numpy~=2.2.0",
 # ]
 # ///
 
