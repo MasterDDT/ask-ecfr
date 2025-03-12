@@ -8,6 +8,7 @@
 #   "langchain-openai<0.4",
 #   "matplotlib<4.0",
 #   "pyqt5<6.0",
+#   "numpy<3.0",
 # ]
 # ///
 
@@ -25,10 +26,11 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QCo
 from PyQt5.QtCore import Qt
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import numpy
 
 
-MAX_THREADS = 1
-MAX_REGULATIONS_T0_FETCH = 10
+MAX_THREADS = 2
+MAX_REGULATIONS_T0_FETCH = 20
 
 # {'title': 22, 'chapter': 'V'}
 class CfrReference:
@@ -53,6 +55,7 @@ class RegulationReference:
         self.section = body['hierarchy'].get('section', None)
         self.appendix = body['hierarchy'].get('appendix', None)
         self.content = None
+
     def get_content(self) -> str:
         if self.content is not None:
             return self.content
@@ -80,8 +83,10 @@ class RegulationReference:
         else:
             print(f"Failed to get content for {self.display_name()}: {response}")
             return ""
+
     def get_words(self) -> list[str]:
         return re.findall(r'\w+', self.get_content().lower())
+
     def get_complexity(self) -> int: 
         if os.environ.get("OPENAI_API_KEY") is None:
             return 0
@@ -105,6 +110,7 @@ class RegulationReference:
             return -1
         else:
             return 0
+
     def get_spending(self) -> int: 
         if os.environ.get("OPENAI_API_KEY") is None:
             return 0
@@ -128,6 +134,7 @@ class RegulationReference:
             return -1
         else:
             return 0
+
     def display_name(self) -> str:
         parts = [
             self.date,
@@ -157,6 +164,7 @@ class Agency:
         self.children = []
         for child in body.get('children', []):
             self.children.append(Agency(child))
+
     def get_regs(self) -> Iterator[RegulationReference]:
         # curl -X GET "https://www.ecfr.gov/api/search/v1/results?agency_slugs%5B%5D=agriculture-department&per_page=20&page=1&order=relevance&paginate_by=results"
         url = f"{self.base_url}/search/v1/results"
@@ -188,18 +196,21 @@ class AgencyStat:
     def __init__(self, ag: Agency, reg_stats: list[RegStat]):
         self.agency = ag
         self.reg_stats = reg_stats
-    def complex_ratios(self) -> list[float]:
+
+    def complex_percents(self) -> list[float]:
         if len(self.reg_stats) == 0:
-            return [0.0, 0.0, 1.0]
+            return [0.0, 0.0]
         complex = sum([1 for i in self.reg_stats if i.complexity_score == 1]) / len(self.reg_stats)
         not_complex = sum([1 for i in self.reg_stats if i.complexity_score == -1]) / len(self.reg_stats)
-        return [complex, not_complex, 1.0 - complex - not_complex]
-    def spending_ratios(self) -> list[float]:
+        return [complex, not_complex]
+
+    def spending_percents(self) -> list[float]:
         if len(self.reg_stats) == 0:
-            return [0.0, 0.0, 1.0]
+            return [0.0, 0.0]
         spending = sum([1 for i in self.reg_stats if i.spending_score == 1]) / len(self.reg_stats)
         not_spending = sum([1 for i in self.reg_stats if i.spending_score == -1]) / len(self.reg_stats)
-        return [spending, not_spending, 1.0 - spending - not_spending]
+        return [spending, not_spending]
+
     def total_word_count(self) -> int:
         return sum([i.total_words for i in self.reg_stats])
 
@@ -225,7 +236,7 @@ class EcfrAPI:
             while not task_queue.empty():
                 reg = task_queue.get()
                 reg_stat = RegStat(len(reg.get_words()), reg.get_complexity(), reg.get_spending())
-                print(f"{reg.display_name()} has {reg_stat.complexity_score} complex and {reg_stat.spending_score} spending and {reg_stat.total_words} total words")
+                print(f"{reg.display_name()} has complex={reg_stat.complexity_score} spending={reg_stat.spending_score} total_words={reg_stat.total_words}")
                 result_queue.put(reg_stat)
         threads = []
         for _ in range(MAX_THREADS):
@@ -245,15 +256,17 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.api = EcfrAPI()
         self.setWindowTitle("Ask ECFR")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 800, 1000)
 
         # main widget
         self.main_widget = QWidget(self)
         self.setCentralWidget(self.main_widget)
         self.layout = QVBoxLayout(self.main_widget)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(5)
 
         # agency dropdown
-        self.label = QLabel("Pick one", self)
+        self.label = QLabel("Choose an agency", self)
         self.layout.addWidget(self.label)
         self.dropdown = QComboBox(self)
         self.dropdown.addItems([a.sortable_name for a in self.api.get_agencies()])
@@ -269,6 +282,11 @@ class MainWindow(QMainWindow):
         self.spending_figure = plt.Figure()
         self.spending_canvas = FigureCanvas(self.spending_figure)
         self.layout.addWidget(self.spending_canvas)
+
+        # word histogram
+        self.wordhist_figure = plt.Figure()
+        self.wordhist_canvas = FigureCanvas(self.wordhist_figure)
+        self.layout.addWidget(self.wordhist_canvas)
 
         # word count label
         self.word_label = QLabel("", self)
@@ -290,24 +308,42 @@ class MainWindow(QMainWindow):
 
     def update_chart(self, stats: AgencyStat):
         # get complexity data
-        complex_ratios = stats.complex_ratios()
+        complex_percents = stats.complex_percents()
         complex_data = {}
-        if complex_ratios[0] > 0.0:
-            complex_data['complex'] = complex_ratios[0]
-        if complex_ratios[1] > 0.0:
-            complex_data['not complex'] = complex_ratios[1] 
-        if complex_ratios[2] > 0.0:
-            complex_data['unknown'] = complex_ratios[2]
+        if complex_percents[0] > 0.0:
+            complex_data['complex'] = complex_percents[0]
+        if complex_percents[1] > 0.0:
+            complex_data['not complex'] = complex_percents[1] 
+        if (complex_percents[0] + complex_percents[1]) < 1.0:
+            complex_data['unknown'] = 1.0 - complex_percents[0] - complex_percents[1]
 
         # get spending data
-        spending_ratios = stats.spending_ratios()
+        spending_percents = stats.spending_percents()
         spending_data = {}
-        if spending_ratios[0] > 0.0:
-            spending_data['spending'] = spending_ratios[0]
-        if spending_ratios[1] > 0.0:
-            spending_data['not spending'] = spending_ratios[1]
-        if spending_ratios[2] > 0.0:
-            spending_data['unknown'] = spending_ratios[2]
+        if spending_percents[0] > 0.0:
+            spending_data['spending'] = spending_percents[0]
+        if spending_percents[1] > 0.0:
+            spending_data['not spending'] = spending_percents[1]
+        if (spending_percents[0] + spending_percents[1]) < 1.0:
+            spending_data['unknown'] = 1.0 - spending_percents[0] - spending_percents[1]
+
+        # get word histogram data
+        num_word_bins = 10
+        word_counts = [reg.total_words for reg in stats.reg_stats]
+
+        min_val = min(word_counts)
+        max_val = max(word_counts)
+        bin_width = (max_val - min_val) / num_word_bins
+        word_bins = numpy.arange(min_val, max_val + bin_width, bin_width)
+        # ensure exactly 10 buckets by adjusting the last bin if needed
+        if len(word_bins) > num_word_bins + 1:
+            word_bins = word_bins[:num_word_bins + 1]
+        elif len(word_bins) < num_word_bins + 1:
+            word_bins = numpy.linspace(min_val, max_val, num_word_bins + 1)
+        word_bins = numpy.rint(word_bins).astype(int)
+        word_bin_labels = [f"{int(word_bins[i])}-{int(word_bins[i+1])}" for i in range(len(word_bins)-1)]
+
+        print(f"Histogram counts: {word_counts} bins: {word_bins} labels: {word_bin_labels}")
 
         # clear figures
         self.complexity_figure.clear()
@@ -320,6 +356,7 @@ class MainWindow(QMainWindow):
         complexity_ax.pie(values, labels=labels, autopct='%1.1f%%')
         complexity_ax.axis('equal')  # Equal aspect ratio ensures pie is circular
         complexity_ax.set_title("Percentage of Complex Regulations")
+        self.complexity_figure.tight_layout(pad=1.0)
 
         # spending pie
         spending_ax = self.spending_figure.add_subplot(111)
@@ -328,16 +365,30 @@ class MainWindow(QMainWindow):
         spending_ax.pie(values, labels=labels, autopct='%1.1f%%')
         spending_ax.axis('equal')  # Equal aspect ratio ensures pie is circular
         spending_ax.set_title("Percentage of Regulations Involving Spending")
+        self.spending_figure.tight_layout(pad=1.0)
 
-        # update word count label
+        # word histogram
+        wordhist_ax = self.wordhist_figure.add_subplot(111)
+        wordhist_ax.hist(word_counts, bins=word_bins, edgecolor='black')
+        bin_midpoints = (word_bins[:-1] + word_bins[1:]) / 2
+        wordhist_ax.set_xticks(bin_midpoints)
+        wordhist_ax.set_xticklabels(word_bin_labels, rotation=45, ha='right')
+        wordhist_ax.tick_params(axis='x', length=0)
+        wordhist_ax.set_title("Word Counts")
+        wordhist_ax.set_xlabel("Num Words")
+        wordhist_ax.set_ylabel("Frequency")
+        self.wordhist_figure.tight_layout(pad=1.0)
+
+        # word count label
         self.word_label.setText(f"""
             Total regulations: {len(stats.reg_stats)}
             Total word count: {stats.total_word_count()}
         """)
 
-        # refresh both pies
+        # refresh
         self.complexity_canvas.draw()
         self.spending_canvas.draw()
+        self.wordhist_canvas.draw()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
