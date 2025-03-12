@@ -11,9 +11,10 @@ Install [uv python manager](https://docs.astral.sh/uv/getting-started/installati
 ## Run
 If you want to use an LLM to get additional insights for each regulation, define `OPENAI_API_KEY` in your environment.
 
-Run with `uv`, which will fetch the required python version and all dependencies defined at the top of the file.
+Run with the below command, which will fetch the required python version and all dependencies defined at the top of the file.
 ```
-uv run main.py
+$> export OPENAI_API_KEY=abc  # optional
+$> uv run main.py
 ```
 
 If you see a lot of 429 throttling errors, decrease `MAX_THREADS` and `MAX_REGULATIONS_T0_FETCH` environment variables (default 4 and 100). Conversely if app is too slow, increase those values.
